@@ -129,13 +129,11 @@ app.use(router.routes())
 ```js
 const koaBody = require('koa-body')()
 
-router.post('/link', koaBody, async(ctx, next) => {
-  await next()
-    ctx.body = {
-      code: '0',
-      description: 'ok',
-      result: ctx.request.body
-    }
+router.post('/link', koaBody, ctx => {
+  ctx.body = {
+    code: '0',
+    description: 'ok',
+    result: ctx.request.body
   }
 })
 
@@ -197,13 +195,51 @@ require('./app.js')
 
 > gulp任务的监控对象也从app.js变成了index.js
 
+#### 引入环境变量，便于本地调试查看错误信息
+> 为了兼容win和mac，要加个cross-env，同时加入环境变量
+
+```json
+    "start": "cross-env NODE_ENV=dev gulp nodemon"
+```
+> 调用方式
+```js
+const IS_DEBUG = process.env.NODE_ENV === 'dev'
+```
+
 #### 有人走错路怎么办？
 ```js
 // 统一的错误处理
 app.use(async(ctx, next) => {
   try {
     await next()
-  } catch(e) {
+    let status = ctx.status
+    if (status === 200) return
+    let msg
+    switch (status) {
+      case 401:
+        msg = '登陆失效'
+        break
+      case 403:
+        msg = '没有权限进行该操作'
+        break
+      case 404:
+        msg = `请求地址出错: ${ctx.url}`
+        break
+      case 500:
+        msg = '服务器错误'
+        break
+      case 503:
+        msg = '服务器错误'
+        break
+      default:
+        msg = '未知错误'
+    }
+    ctx.body = {
+      code: '-1',
+      description: msg
+    }
+  } catch (e) {
+    if (IS_DEBUG) ctx.throw(e)
     ctx.body = {
       code: '-1',
       description: '大哥，你迷路了么？？？'
@@ -275,17 +311,53 @@ koa起床成功。。。
   --> GET /hello/koa 200 630ms 20b
 ```
 
+#### 我要从其他地方调用接口获取数据，封装后再返回
+> 加入request包
+> 简单封装下请求接口的方法
+
+```js
+// 简单封装下接口
+const getData = (url, type = 'get', data = {} ) => {
+  return new Promise((yes, no) => {
+    request[type]({ url: url, data }, (err, res, body) => {
+      if (res.statusCode === 200) {
+        yes(JSON.parse(body))
+      } else {
+        no(err)
+      }
+    })
+  })
+}
+```
+> 让开，我开始装逼了
+
+```js
+// 获取其他接口返回的参数
+router.post('/outside', koaBody, async(ctx) => {
+  try {
+    const data = await getData('http://apis.io/api/maintainers')
+    ctx.body = {
+      code: '0',
+      description: 'ok',
+      result: data.data
+    }
+  } catch (e) {
+    ctx.throw(e)
+  }
+})
+```
 
 ### 最终代码
 
 > 目录结构
 
+		├─ .editorconfig   // 编辑器配置，代码规范
+		├─ .gitignore      // git忽略文件
 		├─ app.js          // 核心文件
 		├─ gulpfile.js     // gulp任务
 		├─ index.js        // babel入口
-		└─ package.json    // 配置文件  
-
-> git: https://github.com/babytutu/koa-demo.git
+		├─ package.json    // 配置文件  
+		└─ README.md       // 项目说明  
 
 ### 参考文章
 > [koa官网](http://koajs.com/)

@@ -3,6 +3,8 @@ const router = require('koa-router')()
 const koaBody = require('koa-body')()
 const logger = require('koa-logger')()
 const app = new Koa()
+const getData = require('./utils/http')
+const IS_DEBUG = process.env.NODE_ENV === 'dev'
 
 app.use(logger)
 
@@ -10,7 +12,34 @@ app.use(logger)
 app.use(async(ctx, next) => {
   try {
     await next()
-  } catch(e) {
+    let status = ctx.status
+    if (status === 200) return
+    let msg
+    switch (status) {
+      case 401:
+        msg = '登陆失效'
+        break
+      case 403:
+        msg = '没有权限进行该操作'
+        break
+      case 404:
+        msg = `请求地址出错: ${ctx.url}`
+        break
+      case 500:
+        msg = '服务器错误'
+        break
+      case 503:
+        msg = '服务器错误'
+        break
+      default:
+        msg = '未知错误'
+    }
+    ctx.body = {
+      code: '-1',
+      description: msg
+    }
+  } catch (e) {
+    if (IS_DEBUG) ctx.throw(e)
     ctx.body = {
       code: '-1',
       description: '大哥，你迷路了么？？？'
@@ -70,11 +99,24 @@ router.get('/hello/:name', async(ctx, next) => {
 // 包装成一个正经的返回结果
 router.post('/link', koaBody, async(ctx, next) => {
   await next()
+  ctx.body = {
+    code: '0',
+    description: 'ok',
+    result: ctx.request.body || {}
+  }
+})
+
+// 获取其他接口返回的参数
+router.post('/outside', koaBody, async(ctx) => {
+  try {
+    const data = await getData('http://apis.io/api/maintainers')
     ctx.body = {
       code: '0',
       description: 'ok',
-      result: ctx.request.body
+      result: data.data
     }
+  } catch (e) {
+    ctx.throw(e)
   }
 })
 
