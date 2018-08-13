@@ -70,7 +70,7 @@ router.get('/hello/:name', async(ctx, next) => {
   await next()
   let name = ctx.params.name
   ctx.body = `<h1>Hello, ${name}!</h1>`
-  
+
   // 第一次肯定起不来
   try {
     const data = await sleep(100, 1)
@@ -78,7 +78,7 @@ router.get('/hello/:name', async(ctx, next) => {
   } catch (e) {
     console.log(name + e)
   }
-  
+
   // 第二次还是失败了
   try {
     const data = await sleep(200, 2)
@@ -86,7 +86,7 @@ router.get('/hello/:name', async(ctx, next) => {
   } catch (e) {
     console.log(name + e)
   }
-  
+
   // 好了，一二不过三，可以起来了
   try {
     const data = await sleep(300)
@@ -109,11 +109,11 @@ router.post('/link', koaBody, async(ctx, next) => {
 // 获取其他接口返回的参数
 router.post('/outside', koaBody, async(ctx) => {
   try {
-    const data = await getData('http://apis.io/api/maintainers')
+    const data = await getData('https://api.douban.com/v2/movie/in_theaters?apikey=0b2bdeda43b5688921839c8ecb20399b&city=%E6%9D%AD%E5%B7%9E&start=0&count=100')
     ctx.body = {
       code: '0',
       description: 'ok',
-      result: data.data
+      result: data
     }
   } catch (e) {
     ctx.throw(e)
